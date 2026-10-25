@@ -154,8 +154,10 @@ public partial class SheetWindow : Window
     // ── Background capture thread ─────────────────────────────
     private void StartCaptureThreadIfEnabled()
     {
-        if (_captureThread?.IsAlive == true) return;
+        // Set the flag first: if the previous thread is still alive (Stop was
+        // just requested), it keeps running instead of exiting with no successor.
         _captureRunning = true;
+        if (_captureThread?.IsAlive == true) return;
         _captureThread = new Thread(CaptureLoop)
         {
             IsBackground = true,
@@ -182,30 +184,15 @@ public partial class SheetWindow : Window
 
     private void CaptureLoop()
     {
+        // Work in physical pixels on this thread. The app itself is System-DPI aware,
+        // so on a monitor with a different scale GetWindowRect would return
+        // virtualized coordinates that don't match the screen (DXGI/GDI).
+        if (SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2) == nint.Zero)
+            SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
+
         // Initialize DXGI (GPU capture) + high-res timer
         _dxgiCapture.TryInitialize();
         EnsureHighResTimer();
-
-        // Initialize GPU compute shaders if available and enabled
-        bool wantGpu = _settingsService.Settings.UseGpuProcessing;
-        bool dxgiOk = _dxgiCapture.IsUsingDxgi;
-        bool devOk = _dxgiCapture.Device != null && _dxgiCapture.Context != null;
-        _profLog.Add($"GPU init: want={wantGpu} dxgi={dxgiOk} device={devOk}");
-
-        if (wantGpu && dxgiOk && devOk)
-        {
-            try
-            {
-                _gpuAvailable = _gpuService.Initialize(_dxgiCapture.Device!, _dxgiCapture.Context!);
-                _profLog.Add($"GPU init result: {_gpuAvailable}" +
-                    (_gpuAvailable ? "" : $" error: {_gpuService.InitError}"));
-            }
-            catch (Exception ex)
-            {
-                _profLog.Add($"GPU init FAILED: {ex.Message}");
-                _gpuAvailable = false;
-            }
-        }
 
         while (_captureRunning)
         {
@@ -214,9 +201,18 @@ public partial class SheetWindow : Window
 
             if (!shouldCapture)
             {
-                Thread.SpinWait(100);
+                Thread.Sleep(1);
                 continue;
             }
+
+            // Recover from ACCESS_LOST / device loss (lock screen, sleep, driver
+            // update…), then (re)build GPU resources if the device changed.
+            try
+            {
+                _dxgiCapture.Maintain();
+                EnsureGpuForCurrentDevice();
+            }
+            catch (Exception ex) { AddProfLog($"Maintain ERROR: {ex.Message}"); }
 
             _oneshotRequested = false;
             _profSw.Restart();
@@ -226,7 +222,7 @@ public partial class SheetWindow : Window
                 GetWindowRect(_hwndCache, out RECT wr);
                 int x = wr.Left, y = wr.Top;
                 int w = wr.Right - wr.Left, h = wr.Bottom - wr.Top;
-                if (w <= 0 || h <= 0) continue;
+                if (w <= 0 || h <= 0) { Thread.Sleep(50); continue; }
 
                 int stride = w * 4;
                 _back.EnsureCapacity(w, h, stride);
@@ -252,7 +248,18 @@ public partial class SheetWindow : Window
                         t1 = _profSw.ElapsedTicks;
                         t2 = t1;
 
-                        if (gpuCaptured)
+                        if (!gpuCaptured)
+                        {
+                            // DXGI can't serve this region (rotated monitor, other GPU,
+                            // off-screen part, recovering) → GDI capture, GPU processing
+                            _back.CaptureX = x;
+                            _back.CaptureY = y;
+                            _dxgiCapture.CaptureGdiIntoBuffer(_back, x, y);
+                            _gpuService.UploadSrcFromCpu(_back.Src, w, h, stride);
+                            t1 = _profSw.ElapsedTicks;
+                            t2 = t1;
+                        }
+
                         {
                             if (isErase)
                             {
@@ -280,17 +287,13 @@ public partial class SheetWindow : Window
                             _gpuService.ReadResultToCpu(_back.Dst, w, h);
                             t3 = _profSw.ElapsedTicks;
                         }
-                        else
-                        {
-                            // DXGI capture failed → CPU fallback this frame
-                            goto cpuFallback;
-                        }
                     }
                     catch (Exception gpuEx)
                     {
+                        // Disabled until the device is recreated (DeviceGeneration changes)
                         _gpuAvailable = false;
-                        _profLog.AddRange(_gpuService.DebugLog);
-                        _profLog.Add($"GPU ERROR (auto-fallback to CPU): {gpuEx.Message}");
+                        _dxgiCapture.CheckDeviceLost();
+                        AddProfLog($"GPU ERROR (auto-fallback to CPU): {gpuEx.Message}");
                         goto cpuFallback;
                     }
                     goto afterProcess;
@@ -368,6 +371,35 @@ public partial class SheetWindow : Window
                 PreciseSleep(interval, _profSw);
             // interval <= 1: no sleep, run at maximum speed
         }
+    }
+
+    private int _gpuDeviceGeneration = -1;
+
+    /// <summary>Initialize GPU shaders on the current capture device (once per device).</summary>
+    private void EnsureGpuForCurrentDevice()
+    {
+        if (!_settingsService.Settings.UseGpuProcessing) return;
+        if (_gpuDeviceGeneration == _dxgiCapture.DeviceGeneration) return;
+        if (!_dxgiCapture.IsUsingDxgi || _dxgiCapture.Device == null || _dxgiCapture.Context == null)
+            return;
+
+        _gpuDeviceGeneration = _dxgiCapture.DeviceGeneration;
+        try
+        {
+            _gpuAvailable = _gpuService.Initialize(_dxgiCapture.Device, _dxgiCapture.Context);
+            AddProfLog($"GPU init (device #{_gpuDeviceGeneration}): {_gpuAvailable}" +
+                (_gpuAvailable ? "" : $" error: {_gpuService.InitError}"));
+        }
+        catch (Exception ex)
+        {
+            _gpuAvailable = false;
+            AddProfLog($"GPU init FAILED: {ex.Message}");
+        }
+    }
+
+    private void AddProfLog(string line)
+    {
+        if (_profLog.Count < 500) _profLog.Add(line); // bounded for long sessions
     }
 
     private void FlushProfileLog(int w, int h)
@@ -612,6 +644,11 @@ public partial class SheetWindow : Window
 
     [DllImport("user32.dll")]
     private static extern int GetDpiForSystem();
+
+    [DllImport("user32.dll")]
+    private static extern nint SetThreadDpiAwarenessContext(nint dpiContext);
+    private static readonly nint DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE = -3;
+    private static readonly nint DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = -4;
 
     // High-resolution timer for smooth frame pacing
     [DllImport("winmm.dll")]

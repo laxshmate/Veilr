@@ -62,6 +62,10 @@ public class GpuProcessingService : IDisposable
     /// </summary>
     public bool Initialize(ID3D11Device device, ID3D11DeviceContext context)
     {
+        // Re-initialization (e.g. after device loss): drop resources of the old device
+        Cleanup();
+        _initialized = false;
+        InitError = null;
         _device = device;
         _context = context;
 
@@ -129,6 +133,19 @@ public class GpuProcessingService : IDisposable
 
     /// <summary>Ensure GPU textures are allocated for the given dimensions.</summary>
     public void EnsureTexturesPublic(int w, int h) => EnsureTextures(w, h);
+
+    /// <summary>
+    /// Upload a CPU-captured frame (BGRA, e.g. from GDI) into the source texture,
+    /// so GPU processing still works where DXGI capture can't be used
+    /// (rotated monitor, other GPU's monitor, off-screen parts).
+    /// </summary>
+    public unsafe void UploadSrcFromCpu(byte[] src, int w, int h, int stride)
+    {
+        if (!_initialized || _context == null) return;
+        EnsureTextures(w, h);
+        fixed (byte* p = src)
+            _context.UpdateSubresource(_srcTex!, 0, null, (nint)p, (uint)stride, (uint)(stride * h));
+    }
 
     // ── Public processing methods ─────────────────────────────
 
@@ -580,6 +597,7 @@ public class GpuProcessingService : IDisposable
         _seedBSRV?.Dispose(); _seedBUAV?.Dispose(); _seedMapB?.Dispose();
         _bgColorSRV?.Dispose(); _bgColorUAV?.Dispose(); _bgColorTex?.Dispose();
         _stagingTex?.Dispose();
+        _texW = _texH = 0; // force EnsureTextures to recreate
     }
 
     private void Cleanup()

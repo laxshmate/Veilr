@@ -11,6 +11,7 @@ namespace Veilr.Tests;
 /// Tests DXGI initialization, shader compilation, GPU processing, and monitor detection.
 /// Skips gracefully if no GPU is available (CI environments).
 /// </summary>
+[Collection("DesktopDuplication")] // DXGI duplication is per-output exclusive-ish: run sequentially
 public class GpuPipelineTests
 {
     private static bool HasGpu()
@@ -55,6 +56,150 @@ public class GpuPipelineTests
                 if (dst[i] != 0) hasData = true;
             Assert.True(hasData, "Captured data should not be all zeros");
         }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern nint SetThreadDpiAwarenessContext(nint ctx);
+
+    private static byte[] GdiCapture(int x, int y, int w, int h)
+    {
+        using var bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+        new ScreenCaptureService().CaptureInto(bmp, x, y);
+        var data = bmp.LockBits(new Rectangle(0, 0, w, h), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        var buf = new byte[w * h * 4];
+        Marshal.Copy(data.Scan0, buf, 0, buf.Length);
+        bmp.UnlockBits(data);
+        return buf;
+    }
+
+    private static double MeanDiff(byte[] p, byte[] q)
+    {
+        double d = 0;
+        for (int i = 0; i < p.Length; i += 4)
+            for (int c = 0; c < 3; c++) d += Math.Abs(p[i + c] - q[i + c]);
+        return d / (p.Length / 4 * 3);
+    }
+
+    /// <summary>
+    /// Regression: when no new desktop frame arrives (static screen), capturing a
+    /// different position must return that position's pixels, not the previous
+    /// region (the old code returned stale data → "frozen" sheet).
+    /// </summary>
+    [SkippableFact]
+    public void DxgiCapture_StaticScreen_NewPositionIsNotStale()
+    {
+        // Physical pixels, same as the app's capture thread
+        var prev = SetThreadDpiAwarenessContext(-4);
+        try
+        {
+            using var dxgi = new DxgiCaptureService();
+            Skip.IfNot(dxgi.TryInitialize(), "No DXGI");
+
+            const int w = 64, h = 64, stride = w * 4;
+            // Pick two positions on the primary monitor whose content differs
+            int ax = 0, ay = 0;
+            var gA = GdiCapture(ax, ay, w, h);
+            int bx = 0, by = 0; double best = -1;
+            for (int yy = 0; yy <= 1000; yy += 100)
+                for (int xx = 0; xx <= 1800; xx += 150)
+                {
+                    double d = MeanDiff(gA, GdiCapture(xx, yy, w, h));
+                    if (d > best) { best = d; bx = xx; by = yy; }
+                }
+            Skip.If(best < 20, $"Screen too uniform to test (max diff {best:F1})");
+
+            var a = new byte[stride * h];
+            var b = new byte[stride * h];
+            bool ok = false;
+            for (int i = 0; i < 20 && !(ok = dxgi.TryCaptureRegion(ax, ay, w, h, a, stride)); i++)
+                System.Threading.Thread.Sleep(30);
+            Skip.IfNot(ok, "DXGI capture unavailable");
+
+            // Pre-fill with the previous region: an implementation that reports success
+            // without writing (the old bug) leaves stale pixels and fails below.
+            Array.Copy(a, b, a.Length);
+            // Immediately capture elsewhere (usually no new frame → served from cache)
+            Skip.IfNot(dxgi.TryCaptureRegion(bx, by, w, h, b, stride), "DXGI capture unavailable");
+            var gB = GdiCapture(bx, by, w, h);
+
+            double diffNew = MeanDiff(b, gB), diffOld = MeanDiff(a, gB);
+            Assert.True(diffNew < 8 && diffNew < diffOld / 2,
+                $"DXGI at ({bx},{by}) should match screen there: diff {diffNew:F1} (stale-region diff {diffOld:F1})");
+        }
+        finally { SetThreadDpiAwarenessContext(prev); }
+    }
+
+    [Fact]
+    public void DxgiCapture_RegionOutsideAllOutputs_ReturnsFalse()
+    {
+        using var dxgi = new DxgiCaptureService();
+        if (!dxgi.TryInitialize()) return;
+        var dst = new byte[16 * 16 * 4];
+        Assert.False(dxgi.TryCaptureRegion(-100000, -100000, 16, 16, dst, 64));
+    }
+
+    [Fact]
+    public void DxgiCapture_Maintain_IsSafeToCallRepeatedly()
+    {
+        using var dxgi = new DxgiCaptureService();
+        dxgi.Maintain(); // before init: no-op
+        if (!dxgi.TryInitialize()) return;
+        int gen = dxgi.DeviceGeneration;
+        for (int i = 0; i < 5; i++) dxgi.Maintain();
+        Assert.Equal(gen, dxgi.DeviceGeneration); // healthy device is not recreated
+    }
+
+    private static bool CaptureWithin(DxgiCaptureService dxgi, int ms)
+    {
+        const int w = 32, h = 32;
+        var dst = new byte[w * h * 4];
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < ms)
+        {
+            if (dxgi.TryCaptureRegion(10, 10, w, h, dst, w * 4)) return true;
+            System.Threading.Thread.Sleep(20);
+        }
+        return false;
+    }
+
+    /// <summary>Regression: after ACCESS_LOST (lock screen, UAC, mode change) capture must resume.</summary>
+    [SkippableFact]
+    public void DxgiCapture_RecoversFromAccessLost()
+    {
+        var prev = SetThreadDpiAwarenessContext(-4);
+        try
+        {
+            using var dxgi = new DxgiCaptureService();
+            Skip.IfNot(dxgi.TryInitialize(), "No DXGI");
+            Skip.IfNot(CaptureWithin(dxgi, 1000), "DXGI capture unavailable");
+
+            dxgi.SimulateAccessLost();
+            Assert.True(CaptureWithin(dxgi, 3000), "capture did not resume after ACCESS_LOST");
+        }
+        finally { SetThreadDpiAwarenessContext(prev); }
+    }
+
+    /// <summary>Regression: after device loss (driver update / TDR) a new device is created.</summary>
+    [SkippableFact]
+    public void DxgiCapture_RecoversFromDeviceLost()
+    {
+        var prev = SetThreadDpiAwarenessContext(-4);
+        try
+        {
+            using var dxgi = new DxgiCaptureService();
+            Skip.IfNot(dxgi.TryInitialize(), "No DXGI");
+            Skip.IfNot(CaptureWithin(dxgi, 1000), "DXGI capture unavailable");
+            int gen = dxgi.DeviceGeneration;
+
+            dxgi.SimulateDeviceLost();
+            Assert.True(CaptureWithin(dxgi, 3000), "capture did not resume after device loss");
+            Assert.Equal(gen + 1, dxgi.DeviceGeneration);
+
+            // GPU processing can be rebuilt on the new device
+            using var gpu = new GpuProcessingService();
+            Assert.True(gpu.Initialize(dxgi.Device!, dxgi.Context!), gpu.InitError);
+        }
+        finally { SetThreadDpiAwarenessContext(prev); }
     }
 
     [Fact]

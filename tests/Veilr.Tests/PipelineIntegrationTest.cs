@@ -11,6 +11,7 @@ namespace Veilr.Tests;
 /// End-to-end pipeline test: capture → process → save PNG.
 /// Verifies the actual screen content is captured and processed correctly.
 /// </summary>
+[Collection("DesktopDuplication")]
 public class PipelineIntegrationTest
 {
     [Fact]
