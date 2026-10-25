@@ -44,8 +44,8 @@ public static class Loc
         ? "Sharp removal. Good for text and shapes with clear color boundaries."
         : "くっきり消す。文字と背景がはっきり分かれている場面で使いやすい";
     public static string YCbCrDesc => _lang == "en"
-        ? "Uses TV broadcast color math. Good for video content."
-        : "テレビ放送と同じ色の扱い方で判定する。動画の色を消したいときに向いている";
+        ? "Default. Uses TV broadcast color math. Removes text edges cleanly and also works for video."
+        : "既定。テレビ放送と同じ色の扱い方で判定する。文字のふちまできれいに消えやすく、動画にも向いている";
 
     public static string ModeSelection => _lang == "en" ? "Mode" : "モード切替";
     public static string SheetModeDesc => _lang == "en"

@@ -85,8 +85,8 @@
 |------|------|-----------|
 | シートの色 | RGB / HEX | #FF0000 |
 | シート透明度 | 10-100% | 50% |
-| 消去アルゴリズム | chromakey / labmask / ycbcr | chromakey |
-| 許容範囲 | 0-100 | 30 |
+| 消去アルゴリズム | chromakey / labmask / ycbcr | ycbcr |
+| 許容範囲 | 0-100 | 20 |
 | 自動更新 | ON/OFF | OFF |
 | 更新頻度 | 1ms-500ms | 200ms |
 | GPU高速化 | ON/OFF | OFF |

@@ -13,7 +13,7 @@
     <ApplicationIcon>Resources\veilr-icon.ico</ApplicationIcon>
     <AssemblyName>Veilr</AssemblyName>
     <RootNamespace>Veilr</RootNamespace>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <Authors>KoyoYeager</Authors>
     <Description>Screen Color Eraser - Hide or remove specific colors from your screen</Description>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>

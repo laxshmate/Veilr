@@ -28,14 +28,15 @@ public class ColorSettings
     public int[] Rgb { get; set; } = [255, 0, 0];
     public ThresholdSettings Threshold { get; set; } = new();
     public string ThresholdMode { get; set; } = "strict";
-    public string EraseAlgorithm { get; set; } = "chromakey"; // "chromakey" or "labmask"
+    public string EraseAlgorithm { get; set; } = "ycbcr"; // "chromakey" / "labmask" / "ycbcr"。既定は文字のふちまでいちばんきれいに消える ycbcr
 }
 
 public class ThresholdSettings
 {
-    public int H { get; set; } = 15;
-    public int S { get; set; } = 50;
-    public int V { get; set; } = 50;
+    // 既定は設定画面の「許容範囲」20 と同じ値（H = 20 * 0.45、S・V = 20）
+    public int H { get; set; } = 9;
+    public int S { get; set; } = 20;
+    public int V { get; set; } = 20;
 }
 
 public class OverlayColorSettings
