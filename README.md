@@ -38,12 +38,35 @@
 
 ## ダウンロード
 
-[Releases](https://github.com/KoyoYeager/Veilr/releases) ページから `Veilr.exe` をダウンロードして実行。
+[Releases](https://github.com/laxshmate/Veilr/releases) ページから `Veilr.exe` をダウンロードして実行。
 
 > **SmartScreenの警告が出る場合**
 > 初回起動時に「WindowsによってPCが保護されました」と表示されることがあります。
-> コード署名のない個人開発のexeで表示される標準的な警告です。
+> コード署名のないexeで表示される標準的な警告です。
 > 「詳細情報」→「実行」で起動できます。
+
+## 安全性
+
+- **ソースはすべて公開**しています（MIT License）。配布している exe は、このリポジトリのソースからビルドしたものです
+- **通信しません**。ネットワークにつなぐコードはありません（`HttpClient` などを使っていません）
+- **インストール不要・レジストリに書き込みません**。書き込むのは exe と同じフォルダの `settings.json`（設定）と `capture-profile.log`（画面の取り込みの動作記録）だけです。消すときはフォルダごと消せば終わりです
+- 画面の取り込みは、シートの下の画面を色処理するためだけに使い、保存・送信はしません（「画像エクスポート」で自分で保存したときだけファイルになります）
+
+### ダウンロードした exe を確かめる
+
+v1.0.2 以降の exe は、タグを push したときに GitHub Actions（[release.yml](.github/workflows/release.yml)）がビルドしてリリースに載せています。手元でビルドしたものは載せていません。
+
+1. **SHA-256 を比べる**（リリースの `SHA256SUMS.txt` と同じ値になれば、改ざんされていません）
+
+   ```powershell
+   Get-FileHash .\Veilr.exe -Algorithm SHA256
+   ```
+
+2. **ビルドの証明を確かめる**（[GitHub CLI](https://cli.github.com/) で。このリポジトリの Actions が作った exe かが分かります）
+
+   ```powershell
+   gh attestation verify .\Veilr.exe -R laxshmate/Veilr
+   ```
 
 ## 使い方
 
@@ -134,12 +157,12 @@
 ### ビルド
 
 ```bash
-git clone https://github.com/KoyoYeager/Veilr.git
+git clone https://github.com/laxshmate/Veilr.git
 cd Veilr
 build.bat
 ```
 
-`dist/Veilr.exe` が生成される（self-contained単一exe、ランタイム不要）。
+`dist/Veilr.exe` が生成される（self-contained単一exe、ランタイム不要）。配布用の exe はリポジトリに入れず、リリースに載せます。
 
 ## プロジェクト構成
 
@@ -148,7 +171,6 @@ Veilr/
 ├── README.md / README.en.md
 ├── LICENSE
 ├── build.bat                       ビルドスクリプト（これ1つだけ）
-├── dist/Veilr.exe                  配布用exe
 ├── docs/
 │   ├── spec.md                     仕様書
 │   ├── ui-design.md                UI設計書

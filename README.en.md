@@ -35,12 +35,35 @@ Use it as a digital version of a red study sheet, or to remove unwanted color in
 
 ## Download
 
-Download `Veilr.exe` from the [Releases](https://github.com/KoyoYeager/Veilr/releases) page.
+Download `Veilr.exe` from the [Releases](https://github.com/laxshmate/Veilr/releases) page.
+
+## Safety
+
+- **All source code is public** (MIT License). The released exe is built from this repository.
+- **No network access.** There is no networking code.
+- **No installer, no registry writes.** It only writes `settings.json` (settings) and `capture-profile.log` (capture diagnostics) next to the exe. Delete the folder to remove it.
+- Screen capture is used only to process the area under the sheet. Nothing is saved or sent unless you use "Export image".
+
+### Verify the downloaded exe
+
+Since v1.0.2, the exe is built by GitHub Actions ([release.yml](.github/workflows/release.yml)) when a tag is pushed. Locally built binaries are not uploaded.
+
+1. Compare the SHA-256 with `SHA256SUMS.txt` in the release:
+
+   ```powershell
+   Get-FileHash .\Veilr.exe -Algorithm SHA256
+   ```
+
+2. Verify the build provenance with [GitHub CLI](https://cli.github.com/):
+
+   ```powershell
+   gh attestation verify .\Veilr.exe -R laxshmate/Veilr
+   ```
 
 ## Build
 
 ```bash
-git clone https://github.com/KoyoYeager/Veilr.git
+git clone https://github.com/laxshmate/Veilr.git
 cd Veilr
 build.bat
 ```

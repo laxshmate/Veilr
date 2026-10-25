@@ -3,9 +3,8 @@ bin/
 obj/
 build/
 
-## Distribution (keep Veilr.exe)
-dist/*
-!dist/Veilr.exe
+## Distribution（配布用の exe はリリースに載せる。リポジトリには入れない）
+dist/
 *.user
 *.suo
 *.userosscache

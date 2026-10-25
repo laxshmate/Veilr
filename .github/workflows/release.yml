@@ -1,0 +1,57 @@
+# タグ（v*）を push すると、公開しているソースから exe をビルドしてリリースに載せる。
+# 手元でビルドした exe は載せない。SHA-256 とビルドの証明（GitHub の attestation）を付け、
+# 配布している exe がこのリポジトリのどのコミットから作られたかを誰でも確かめられるようにする。
+name: Release
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write      # リリースを作る
+  id-token: write      # ビルドの証明に署名する
+  attestations: write  # ビルドの証明を保存する
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: テスト
+        run: dotnet test tests/Veilr.Tests -c Release
+
+      - name: ビルド（build.bat と同じ設定）
+        run: >
+          dotnet publish src/Veilr -c Release -r win-x64 --self-contained
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -o ./dist
+
+      - name: SHA-256
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash dist/Veilr.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  Veilr.exe" | Out-File -Encoding ascii -NoNewline dist/SHA256SUMS.txt
+          Write-Output "SHA-256: $hash"
+
+      - name: ビルドの証明
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/Veilr.exe
+
+      - name: リリースを作る
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $notes = "docs/release-notes/$tag.md"
+          if (Test-Path $notes) {
+            gh release create $tag dist/Veilr.exe dist/SHA256SUMS.txt --title "Veilr $tag" --notes-file $notes
+          } else {
+            gh release create $tag dist/Veilr.exe dist/SHA256SUMS.txt --title "Veilr $tag" --generate-notes
+          }
