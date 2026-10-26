@@ -4,7 +4,7 @@ using Veilr.Services;
 namespace Veilr.Tests;
 
 /// <summary>
-/// Settings file name and migration from the old name (settings.json → Veilr_settings.json).
+/// Settings file name: Veilr_settings.json (the old settings.json is not read).
 /// Uses the test binary folder (SettingsService stores next to the exe).
 /// </summary>
 [Collection("SettingsFile")]
@@ -35,21 +35,7 @@ public class SettingsFileTests : IDisposable
     }
 
     [Fact]
-    public void Load_MigratesOldSettingsJson_KeepingValues()
-    {
-        File.WriteAllText(OldPath, """{"update_interval_ms":77,"auto_refresh_enabled":false}""");
-
-        var ss = new SettingsService();
-        ss.Load();
-
-        Assert.Equal(77, ss.Settings.UpdateIntervalMs);
-        Assert.False(ss.Settings.AutoRefreshEnabled);
-        Assert.True(File.Exists(NewPath));
-        Assert.False(File.Exists(OldPath));
-    }
-
-    [Fact]
-    public void Load_PrefersNewFile_WhenBothExist()
+    public void Load_ReadsVeilrSettingsJson_IgnoresOldName()
     {
         File.WriteAllText(OldPath, """{"update_interval_ms":11}""");
         File.WriteAllText(NewPath, """{"update_interval_ms":22}""");
@@ -58,6 +44,16 @@ public class SettingsFileTests : IDisposable
         ss.Load();
 
         Assert.Equal(22, ss.Settings.UpdateIntervalMs);
-        Assert.True(File.Exists(OldPath)); // untouched
+    }
+
+    [Fact]
+    public void Load_OldNameOnly_UsesDefaults()
+    {
+        File.WriteAllText(OldPath, """{"update_interval_ms":11}""");
+
+        var ss = new SettingsService();
+        ss.Load();
+
+        Assert.Equal(200, ss.Settings.UpdateIntervalMs);
     }
 }
