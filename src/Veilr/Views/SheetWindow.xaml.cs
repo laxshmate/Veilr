@@ -354,7 +354,10 @@ public partial class SheetWindow : Window
                     {
                         if (_gpuService.DebugLog.Count > 0)
                             _profLog.AddRange(_gpuService.DebugLog);
+#if DEBUG
+                        // Developer diagnostics only — release builds write nothing
                         FlushProfileLog(w, h);
+#endif
                     }
                 }
             }

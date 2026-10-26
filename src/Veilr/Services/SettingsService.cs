@@ -6,8 +6,18 @@ namespace Veilr.Services;
 
 public class SettingsService
 {
+    public const string SettingsFileName = "Veilr_settings.json";
+
     private static readonly string SettingsPath =
+        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, SettingsFileName);
+
+    // Name used up to v1.0.5 — migrated on first load
+    private static readonly string LegacySettingsPath =
         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+
+    // Diagnostic log written by v1.0.5 and earlier (now Debug builds only)
+    private static readonly string LegacyProfileLogPath =
+        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "capture-profile.log");
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -19,11 +29,15 @@ public class SettingsService
 
     public void Load()
     {
-        if (!File.Exists(SettingsPath)) return;
+        MigrateLegacyFiles();
+        string path = File.Exists(SettingsPath) ? SettingsPath
+            : File.Exists(LegacySettingsPath) ? LegacySettingsPath // migration failed: read in place
+            : "";
+        if (path == "") return;
 
         try
         {
-            var json = File.ReadAllText(SettingsPath);
+            var json = File.ReadAllText(path);
             Settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions) ?? new AppSettings();
         }
         catch
@@ -43,6 +57,25 @@ public class SettingsService
         {
             // TODO: log error
         }
+    }
+
+    /// <summary>
+    /// settings.json → Veilr_settings.json (keeps the user's settings), and remove
+    /// the old diagnostic log in release builds.
+    /// </summary>
+    private static void MigrateLegacyFiles()
+    {
+        try
+        {
+            if (!File.Exists(SettingsPath) && File.Exists(LegacySettingsPath))
+                File.Move(LegacySettingsPath, SettingsPath);
+        }
+        catch { /* read-only folder etc. — Load() falls back to the old file */ }
+
+#if !DEBUG
+        try { if (File.Exists(LegacyProfileLogPath)) File.Delete(LegacyProfileLogPath); }
+        catch { /* ignore */ }
+#endif
     }
 
     public void AddColorHistory(int[] rgb)

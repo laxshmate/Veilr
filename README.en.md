@@ -41,7 +41,7 @@ Download `Veilr.exe` from the [Releases](https://github.com/laxshmate/Veilr/rele
 
 - **All source code is public** (MIT License). The released exe is built from this repository.
 - **No network access.** There is no networking code.
-- **No installer, no registry writes.** It only writes `settings.json` (settings) and `capture-profile.log` (capture diagnostics) next to the exe. Delete the folder to remove it.
+- **No installer, no registry writes.** It only writes `Veilr_settings.json` (settings) next to the exe. Delete the folder to remove it.
 - Screen capture is used only to process the area under the sheet. Nothing is saved or sent unless you use "Export image".
 
 ### Verify the downloaded exe

@@ -30,6 +30,7 @@ Thumbs.db
 
 ## Runtime files
 settings.json
+Veilr_settings.json
 capture-profile.log
 debug-capture.png
 *.stackdump

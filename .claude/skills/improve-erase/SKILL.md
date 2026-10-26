@@ -34,9 +34,9 @@ powershell -Command "Get-Process -Name 'Veilr' -ErrorAction SilentlyContinue | S
 dotnet publish src/Veilr -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o ./dist
 ```
 
-settings.jsonをdist/にコピーしてから起動:
+Veilr_settings.jsonをdist/にコピーしてから起動:
 ```bash
-cp build/settings.json dist/settings.json 2>/dev/null
+cp build/Veilr_settings.json dist/Veilr_settings.json 2>/dev/null
 cd C:/workspace/Veilr && ./dist/Veilr.exe &
 sleep 6
 ```

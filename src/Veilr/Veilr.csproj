@@ -13,7 +13,7 @@
     <ApplicationIcon>Resources\veilr-icon.ico</ApplicationIcon>
     <AssemblyName>Veilr</AssemblyName>
     <RootNamespace>Veilr</RootNamespace>
-    <Version>1.0.5</Version>
+    <Version>1.0.6</Version>
     <!-- Shown in Explorer > Properties > Details -->
     <Authors>laxshmate</Authors>
     <Company>laxshmate</Company>
