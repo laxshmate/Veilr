@@ -13,8 +13,15 @@
     <ApplicationIcon>Resources\veilr-icon.ico</ApplicationIcon>
     <AssemblyName>Veilr</AssemblyName>
     <RootNamespace>Veilr</RootNamespace>
-    <Version>1.0.4</Version>
-    <Authors>KoyoYeager</Authors>
+    <Version>1.0.5</Version>
+    <!-- Shown in Explorer > Properties > Details -->
+    <Authors>laxshmate</Authors>
+    <Company>laxshmate</Company>
+    <Product>Veilr</Product>
+    <AssemblyTitle>Veilr - Screen Color Eraser</AssemblyTitle>
+    <Copyright>Copyright © 2026 laxshmate</Copyright>
+    <!-- Keep product version as plain "1.0.5" (no +commit hash) -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Description>Screen Color Eraser - Hide or remove specific colors from your screen</Description>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
