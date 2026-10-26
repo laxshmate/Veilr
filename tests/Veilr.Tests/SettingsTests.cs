@@ -20,10 +20,10 @@ public class SettingsTests
     // ══════════════════════════════════════════════════════════
 
     [Fact]
-    public void AppSettings_AutoRefreshEnabled_DefaultIsFalse()
+    public void AppSettings_AutoRefreshEnabled_DefaultIsTrue()
     {
         var settings = new AppSettings();
-        Assert.False(settings.AutoRefreshEnabled);
+        Assert.True(settings.AutoRefreshEnabled);
     }
 
     [Fact]
@@ -39,23 +39,24 @@ public class SettingsTests
     [Fact]
     public void AppSettings_AutoRefreshEnabled_DeserializesCorrectly()
     {
-        var settings = new AppSettings { AutoRefreshEnabled = true };
+        // A saved OFF must stay OFF even though the default is ON
+        var settings = new AppSettings { AutoRefreshEnabled = false };
         var json = JsonSerializer.Serialize(settings, JsonOptions);
         var deserialized = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
 
         Assert.NotNull(deserialized);
-        Assert.True(deserialized!.AutoRefreshEnabled);
+        Assert.False(deserialized!.AutoRefreshEnabled);
     }
 
     [Fact]
-    public void AppSettings_AutoRefreshEnabled_DeserializeMissing_DefaultsFalse()
+    public void AppSettings_AutoRefreshEnabled_DeserializeMissing_DefaultsTrue()
     {
         // Simulate old settings file without auto_refresh_enabled
         var json = """{"version":"1.0","mode":"sheet","update_interval_ms":200}""";
         var deserialized = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
 
         Assert.NotNull(deserialized);
-        Assert.False(deserialized!.AutoRefreshEnabled);
+        Assert.True(deserialized!.AutoRefreshEnabled);
     }
 
     [Fact]

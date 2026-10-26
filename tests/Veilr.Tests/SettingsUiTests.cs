@@ -117,12 +117,12 @@ public class SettingsUiTests
     }
 
     [Fact]
-    public void SettingsViewModel_AutoRefreshEnabled_DefaultFalse()
+    public void SettingsViewModel_AutoRefreshEnabled_DefaultTrue()
     {
         var ss = new SettingsService();
         var vm = new Veilr.ViewModels.SettingsViewModel(ss);
 
-        Assert.False(vm.AutoRefreshEnabled);
+        Assert.True(vm.AutoRefreshEnabled);
     }
 
     [Fact]
@@ -133,7 +133,7 @@ public class SettingsUiTests
 
         Assert.False(vm.HasChanges);
 
-        vm.AutoRefreshEnabled = true;
+        vm.AutoRefreshEnabled = false;
         Assert.True(vm.HasChanges);
     }
 

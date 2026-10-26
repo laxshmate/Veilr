@@ -10,7 +10,7 @@ public class AppSettings
     public ColorSettings TargetColor { get; set; } = new();
     public OverlayColorSettings OverlayColor { get; set; } = new();
     public int UpdateIntervalMs { get; set; } = 200;
-    public bool AutoRefreshEnabled { get; set; } = false;
+    public bool AutoRefreshEnabled { get; set; } = true;
     public bool UseGpuProcessing { get; set; } = false;
     public int BarOpacityPercent { get; set; } = 70;
     public HotkeySettings Hotkeys { get; set; } = new();

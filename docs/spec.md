@@ -87,7 +87,7 @@
 | シート透明度 | 10-100% | 50% |
 | 消去アルゴリズム | chromakey / labmask / ycbcr | ycbcr |
 | 許容範囲 | 0-100 | 20 |
-| 自動更新 | ON/OFF | OFF |
+| 自動更新 | ON/OFF | ON |
 | 更新頻度 | 1ms-500ms | 200ms |
 | GPU高速化 | ON/OFF | OFF |
 | バー透明度 | 0-100% | 70% |
