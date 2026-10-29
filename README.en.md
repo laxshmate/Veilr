@@ -8,6 +8,11 @@
 
 [日本語](README.md)
 
+![Hiding and erasing red answers in a Word worksheet with Veilr](docs/images/demo.gif)
+
+The Veilr window over a worksheet in Word: sheet mode hides the red answers, and erase mode turns them into blanks.
+Change the color to erase blue, green or orange answers the same way. (The worksheet and the Veilr screen are in Japanese.)
+
 ---
 
 ## What is Veilr?

@@ -8,6 +8,10 @@
 
 [English](README.en.md)
 
+![Word の問題で、赤い答えを Veilr で隠す・消すところ](docs/images/demo.ja.gif)
+
+Word で作った問題に Veilr のウィンドウを重ね、シートモードで赤い答えを隠し、消去モードで空欄にしたところ。青・緑・オレンジの答えも、色を変えれば同じように消せます。
+
 ---
 
 ## Veilrとは
